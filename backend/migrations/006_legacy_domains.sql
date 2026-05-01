@@ -1,0 +1,2 @@
+-- Legacy migration retained for history only.
+-- No-op to avoid replaying duplicate schema changes already covered by 001_init.sql and follow-up fixes.

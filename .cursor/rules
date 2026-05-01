@@ -1,0 +1,88 @@
+---
+behavior: always
+---
+
+# OpenSpace — SaaS Cloud Hosting
+
+## Contexte projet
+OpenSpace est un SaaS d'hébergement web ciblant les développeurs africains
+et les PME. Chaque utilisateur obtient un container Docker isolé (sous-espace)
+avec Nginx, PHP 8.2, Node.js 20, python 3.12 et accès SFTP/terminal web.
+Backend API sur le port 8000, frontend sur le port 3000.
+
+## Stack technique
+- Backend : Go 1.22 + Fiber, PostgreSQL 16 (pgxpool), Redis 7
+- Frontend : Next.js 14 App Router, TypeScript, Tailwind CSS
+- Infra : Docker Engine, Coolify, Traefik
+- Paiements : CinetPay (prioritaire), NotchPay (secondaire)
+- Domaines : OpenProvider API
+- Terminal web : WebSocket + xterm.js (à venir)
+
+## Structure backend
+backend/
+├── cmd/main.go
+├── internal/
+│   ├── auth/         (handler, middleware, jwt, model, service) ← NE PAS MODIFIER
+│   ├── user/         (model, repository, service)               ← NE PAS MODIFIER
+│   ├── provisioning/ (model, handler, service, docker, repository)
+│   ├── payment/
+│   ├── subscription/
+│   └── domain/
+├── pkg/
+│   ├── config/config.go
+│   ├── database/postgres.go
+│   └── cache/redis.go
+└── migrations/
+
+## Conventions backend (OBLIGATOIRES)
+- Pas d'ORM — requêtes SQL brutes pgxpool uniquement
+- snake_case pour toutes les variables et colonnes SQL
+- Toutes les erreurs retournées en JSON : {"message": "...", "error": "..."}
+- Routes : /api/v1/{module}/{action}
+- Chaque module suit la structure : model.go, repository.go, service.go, handler.go
+- Pas de logique métier dans les handlers — uniquement dans service.go
+- Toujours inclure la gestion d'erreur complète (ne jamais ignorer une erreur)
+- Toujours vérifier le contexte et l'annulation dans les goroutines
+
+## Conventions frontend (OBLIGATOIRES)
+- JWT stocké en httpOnly cookie uniquement, jamais localStorage
+- Client API centralisé dans lib/api.ts — tous les appels passent par là
+- Composants en PascalCase, fonctions en camelCase
+- Tailwind uniquement, pas de CSS custom sauf cas exceptionnel
+- Pas de any en TypeScript — typer correctement toutes les réponses API
+
+## Base de données
+- Host: localhost, Port: 5432
+- User: otaku_krew_user_db
+- Password: otaku_krew_passwords_db
+- Database: openspace
+- Tables existantes : users, containers, subscriptions, payments, domains
+- Ne jamais modifier une migration existante — créer une nouvelle migration
+
+## Plans et tarifs
+- starter : 2 000 FCFA/mois
+- pro : 6 000 FCFA/mois
+- business : 12 000 FCFA/mois
+- 1 seul container par utilisateur, lié au plan
+
+## Image Docker
+- Image base : openspace-base:latest
+- Contient : Nginx (port 80), PHP 8.2-FPM, Node.js 20, OpenSSH (port 22)
+- User non-root : webuser, répertoire web : /var/www/html
+
+## Ce qui est terminé (NE PAS TOUCHER)
+- Auth complète : register, login, me, middleware JWT, refresh token
+- User model avec is_admin
+- Migrations 001 et 002
+- Admin CLI (cmd/createsuperuser)
+- Dashboard frontend : layout, sidebar, appbar, responsive
+
+## Comportement attendu de l'agent
+- Réponds toujours en français
+- Ne génère jamais de migration SQL sans me la montrer et attendre ma validation
+- Ne modifie jamais go.mod sans me demander d'abord
+- Ne touche jamais aux modules auth et user sauf si je le demande explicitement
+- Toujours soumettre un plan avant d'écrire du code sur des tâches multi-fichiers
+- Si tu n'es pas certain d'un comportement de l'API CinetPay ou NotchPay,
+  dis-le explicitement plutôt que de deviner
+- Quand tu crées un handler, crée toujours le test correspondant
