@@ -17,6 +17,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/openspace/backend/internal/admin"
 	"github.com/openspace/backend/internal/auth"
+	"github.com/openspace/backend/internal/databases"
 	"github.com/openspace/backend/internal/domain"
 	"github.com/openspace/backend/internal/payment"
 	"github.com/openspace/backend/internal/provisioning"
@@ -111,7 +112,7 @@ func main() {
 	adminRepo := admin.NewRepository(db)
 
 	// Initialiser le client Docker
-	dockerClient, err := provisioning.NewDockerClient()
+	dockerClient, err := provisioning.NewDockerClientWithOptions(cfg.App.EnableResourceLimits)
 	if err != nil {
 		log.Fatalf("❌ Impossible de se connecter à Docker: %v", err)
 	}
@@ -123,7 +124,23 @@ func main() {
 	subscriptionService := subscription.NewService(subscriptionRepo, provisioningService)
 	paymentService := payment.NewService(paymentRepo, subscriptionService, &cfg.Payment)
 	domainService := domain.NewService(domainRepo, subscriptionService, provisioningRepo, &cfg.Domain)
-	adminService := admin.NewService(adminRepo)
+	adminService := admin.NewService(adminRepo, dockerClient)
+
+	dbProvisioner, err := databases.NewDockerProvisioner()
+	if err != nil {
+		log.Printf("⚠️ Docker DB provisioner indisponible: %v", err)
+	}
+	var databasesService *databases.Service
+	var databasesHandler *databases.Handler
+	if dbProvisioner != nil {
+		databasesService = databases.NewService(
+			databases.NewRepository(db),
+			dbProvisioner,
+			cfg.JWT.AccessSecret,
+			databases.NewSubscriptionAdapter(subscriptionRepo),
+		)
+		databasesHandler = databases.NewHandler(databasesService)
+	}
 
 	// Initialiser les handlers
 	authHandler := auth.NewHandler(authService)
@@ -239,6 +256,11 @@ func main() {
 
 	// Routes admin
 	admin.RegisterRoutes(v1, adminHandler, jwtMiddleware)
+
+	// Routes bases de données managées
+	if databasesHandler != nil {
+		databases.RegisterRoutes(v1, databasesHandler, jwtMiddleware)
+	}
 
 	// Démarrage gracieux
 	go func() {

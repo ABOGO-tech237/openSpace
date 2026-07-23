@@ -58,7 +58,7 @@ export function WebTerminal({ containerId, hostname, onClose }: WebTerminalProps
       }
     }
 
-    ws.onerror = (event) => {
+    ws.onerror = () => {
       setError('Connection error')
       xterm.writeln('\r\n❌ Connection error')
     }

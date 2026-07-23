@@ -41,6 +41,8 @@ func (r *Repository) FindByUserID(ctx context.Context, userID string) (*Containe
 	query := `
 		SELECT id, user_id, subscription_id, docker_id, hostname, plan, ram_limit, cpu_limit, storage_gb, status, internal_ip, created_at, updated_at
 		FROM containers WHERE user_id = $1
+		ORDER BY created_at DESC
+		LIMIT 1
 	`
 	c := &Container{}
 	err := r.db.QueryRow(ctx, query, userID).Scan(

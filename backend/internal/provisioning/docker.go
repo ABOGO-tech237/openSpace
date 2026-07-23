@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/mount"
@@ -12,10 +13,15 @@ import (
 )
 
 type DockerClient struct {
-	cli *client.Client
+	cli                   *client.Client
+	enableResourceLimits  bool
 }
 
 func NewDockerClient() (*DockerClient, error) {
+	return NewDockerClientWithOptions(false)
+}
+
+func NewDockerClientWithOptions(enableResourceLimits bool) (*DockerClient, error) {
 	cli, err := client.NewClientWithOpts(
 		client.FromEnv,
 		client.WithAPIVersionNegotiation(),
@@ -23,7 +29,7 @@ func NewDockerClient() (*DockerClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("impossible de se connecter à Docker: %w", err)
 	}
-	return &DockerClient{cli: cli}, nil
+	return &DockerClient{cli: cli, enableResourceLimits: enableResourceLimits}, nil
 }
 
 func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionRequest) (string, error) {
@@ -37,6 +43,9 @@ func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionReques
 
 	// Volume persistant pour les données du client
 	volumePath := fmt.Sprintf("/var/openspace/data/%s", req.Hostname)
+	if err := os.MkdirAll(volumePath, 0755); err != nil {
+		return "", fmt.Errorf("impossible de créer le volume: %w", err)
+	}
 
 	// Configuration du container
 	config := &container.Config{
@@ -57,12 +66,8 @@ func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionReques
 		},
 	}
 
-	// Limites de ressources — isolation stricte
+	// Limites de ressources — optionnelles (désactivées par défaut en dev/CI)
 	hostConfig := &container.HostConfig{
-		Resources: container.Resources{
-			Memory:   memoryInBytes(planCfg.RAM),
-			NanoCPUs: cpuToNanoCPU(planCfg.CPUs),
-		},
 		Mounts: []mount.Mount{
 			{
 				Type:   mount.TypeBind,
@@ -74,6 +79,12 @@ func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionReques
 			Name: "unless-stopped",
 		},
 		NetworkMode: "openspace_network",
+	}
+	if d.enableResourceLimits {
+		hostConfig.Resources = container.Resources{
+			Memory:   memoryInBytes(planCfg.RAM),
+			NanoCPUs: cpuToNanoCPU(planCfg.CPUs),
+		}
 	}
 
 	networkConfig := &network.NetworkingConfig{}
@@ -93,6 +104,11 @@ func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionReques
 
 	log.Printf("✅ Container créé et démarré: %s (plan: %s)", containerName, req.Plan)
 	return resp.ID, nil
+}
+
+func (d *DockerClient) RestartContainer(ctx context.Context, dockerID string) error {
+	timeout := 10
+	return d.cli.ContainerRestart(ctx, dockerID, container.StopOptions{Timeout: &timeout})
 }
 
 func (d *DockerClient) StopContainer(ctx context.Context, dockerID string) error {

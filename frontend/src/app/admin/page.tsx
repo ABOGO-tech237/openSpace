@@ -65,6 +65,8 @@ export default function AdminDashboard() {
 
   // Charger les containers
   useEffect(() => {
+    if (!user?.is_admin) return
+
     const loadContainers = async () => {
       try {
         setIsLoading(true)
@@ -82,12 +84,9 @@ export default function AdminDashboard() {
       }
     }
 
-    if (user?.is_admin) {
-      loadContainers()
-      // Poll every 5 seconds
-      const interval = setInterval(loadContainers, 5000)
-      return () => clearInterval(interval)
-    }
+    loadContainers()
+    const interval = setInterval(loadContainers, 5000)
+    return () => clearInterval(interval)
   }, [user])
 
   const handleLogout = async () => {
