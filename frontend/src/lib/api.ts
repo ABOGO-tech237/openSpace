@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosError } from 'axios'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1'
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1'
 
 // Types
 export interface User {
@@ -65,6 +65,38 @@ export interface Plan {
   cpus: number
   storage: number
   price: number
+}
+
+export interface DatabaseInstance {
+  id: string
+  user_id: string
+  name: string
+  engine: 'mysql' | 'postgresql' | 'mongodb' | 'redis'
+  version: string
+  status: 'creating' | 'active' | 'error' | 'deleting' | 'deleted'
+  host: string
+  port: number
+  database_name: string
+  username?: string
+  storage_mb: number
+  max_connections: number
+  created_at: string
+  updated_at: string
+}
+
+export interface DatabaseInstanceDetails extends DatabaseInstance {
+  password?: string
+  connection_string?: string
+}
+
+export interface DatabaseBackup {
+  id: string
+  instance_id: string
+  size_bytes: number
+  storage_path?: string
+  type: string
+  status: string
+  created_at: string
 }
 
 export interface ApiResponse<T> {
@@ -227,6 +259,39 @@ class APIClient {
   // ============================================
   async getPlans() {
     const response = await this.client.get<ApiResponse<Plan[]>>('/plans')
+    return response.data
+  }
+
+  // ============================================
+  // Databases (SQL + NoSQL)
+  // ============================================
+  async getDatabases() {
+    const response = await this.client.get<ApiResponse<DatabaseInstance[]>>('/databases')
+    return response.data
+  }
+
+  async createDatabase(data: { name: string; engine: string }) {
+    const response = await this.client.post<ApiResponse<DatabaseInstance>>('/databases', data)
+    return response.data
+  }
+
+  async getDatabase(id: string) {
+    const response = await this.client.get<ApiResponse<DatabaseInstanceDetails>>(`/databases/${id}`)
+    return response.data
+  }
+
+  async deleteDatabase(id: string) {
+    const response = await this.client.delete<ApiResponse<null>>(`/databases/${id}`)
+    return response.data
+  }
+
+  async exportDatabase(id: string) {
+    const response = await this.client.post<ApiResponse<DatabaseBackup>>(`/databases/${id}/export`)
+    return response.data
+  }
+
+  async getDatabaseUsers(id: string) {
+    const response = await this.client.get<ApiResponse<unknown[]>>(`/databases/${id}/users`)
     return response.data
   }
 

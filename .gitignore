@@ -5,6 +5,8 @@
 
 # Binaries
 openspace
+backend/main
+backend/createsuperuser
 *.exe
 *.exe~
 *.dll

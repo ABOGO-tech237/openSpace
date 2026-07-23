@@ -2,14 +2,16 @@ package admin
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"github.com/openspace/backend/internal/provisioning"
 )
 
 type Service struct {
-	repo *Repository
+	repo   *Repository
+	docker *provisioning.DockerClient
 }
 
-func NewService(repo *Repository) *Service {
-	return &Service{repo: repo}
+func NewService(repo *Repository, docker *provisioning.DockerClient) *Service {
+	return &Service{repo: repo, docker: docker}
 }
 
 type Handler struct {
@@ -73,9 +75,11 @@ func (h *Handler) DeleteContainer(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Appeler Docker pour arrêter le container
-	// dockerClient.StopContainer(ctx, container.DockerID)
-	// dockerClient.RemoveContainer(ctx, container.DockerID)
+	// Arrêter et supprimer le container Docker
+	if container.DockerID != "" && container.DockerID != "pending" {
+		_ = h.service.docker.StopContainer(c.Context(), container.DockerID)
+		_ = h.service.docker.RemoveContainer(c.Context(), container.DockerID)
+	}
 
 	// Supprimer de la base
 	if err := h.service.repo.DeleteContainer(c.Context(), containerID); err != nil {
@@ -121,8 +125,14 @@ func (h *Handler) RestartContainer(c *fiber.Ctx) error {
 		})
 	}
 
-	// TODO: Appeler Docker pour redémarrer
-	// dockerClient.RestartContainer(ctx, container.DockerID)
+	if container.DockerID != "" && container.DockerID != "pending" {
+		if err := h.service.docker.RestartContainer(c.Context(), container.DockerID); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"success": false,
+				"error":   "Erreur lors du redémarrage Docker",
+			})
+		}
+	}
 
 	// Mettre à jour le statut
 	if err := h.service.repo.UpdateContainerStatus(c.Context(), containerID, "running"); err != nil {

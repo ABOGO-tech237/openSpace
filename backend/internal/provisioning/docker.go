@@ -95,6 +95,11 @@ func (d *DockerClient) CreateContainer(ctx context.Context, req *ProvisionReques
 	return resp.ID, nil
 }
 
+func (d *DockerClient) RestartContainer(ctx context.Context, dockerID string) error {
+	timeout := 10
+	return d.cli.ContainerRestart(ctx, dockerID, container.StopOptions{Timeout: &timeout})
+}
+
 func (d *DockerClient) StopContainer(ctx context.Context, dockerID string) error {
 	return d.cli.ContainerStop(ctx, dockerID, container.StopOptions{})
 }

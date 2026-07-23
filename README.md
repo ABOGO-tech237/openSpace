@@ -1,101 +1,71 @@
-# Structure OpenSpace - Monorepo
+# OpenSpace — SaaS Cloud Hosting (niveau Hostinger)
 
-La structure du projet a été réorganisée en monorepo avec backend et frontend séparés.
+Plateforme cloud pour développeurs et PME africaines. Chaque client obtient un container Docker isolé, un dashboard hPanel-like, et des **bases de données managées SQL/NoSQL**.
 
-## 📁 Structure
+## Stack
 
-```
-c:\Users\user\GolandProjects\openspace\
-├── backend/                    # Code Go (API backend)
-│   ├── cmd/                    # Entrypoint de l'application
-│   ├── internal/               # Code interne (auth, payment, provisioning, etc.)
-│   ├── pkg/                    # Packages réutilisables (cache, config, database)
-│   ├── migrations/             # Migrations SQL
-│   ├── go.mod                  # Module Go
-│   ├── Dockerfile              # Docker pour backend
-│   ├── docker-compose.yml      # Orchestration services
-│   └── .env                    # Variables d'environnement
-│
-└── frontend/                   # Code React/Vite (UI client)
-    ├── src/
-    │   ├── pages/              # Pages (Auth, Dashboard)
-    │   ├── components/         # Composants réutilisables
-    │   ├── App.jsx             # App principal
-    │   ├── index.css           # Styles globaux (rouge + blanc)
-    │   └── main.jsx            # Entrée React
-    ├── public/                 # Assets statiques
-    ├── index.html              # HTML de base
-    ├── vite.config.js          # Config Vite
-    ├── package.json            # Dépendances npm
-    └── node_modules/           # Dépendances installées
-```
+| Couche | Technologie |
+|--------|-------------|
+| Backend | Go 1.25 + Fiber |
+| Frontend | Next.js 14 + TypeScript + Tailwind |
+| Control DB | PostgreSQL 16 |
+| Cache | Redis 7 |
+| Orchestration | Docker + Traefik |
 
-## 🚀 Installation
-
-### Backend (Go)
+## Démarrage rapide
 
 ```bash
-cd backend
-go mod download
-docker-compose up -d  # PostgreSQL + Redis
-go run cmd/main.go
+chmod +x launch.sh
+./launch.sh
+
+# Terminal 1 — API
+cd backend && go run cmd/main.go
+
+# Terminal 2 — Frontend
+cd frontend && npm run dev
 ```
 
-L'API démarre sur `http://localhost:8080`
+- Dashboard : http://localhost:3000
+- API : http://localhost:8080/health
 
-### Frontend (React/Vite)
+## Fonctionnalités
+
+- Authentification JWT + admin CLI
+- Provisioning containers Docker (`openspace-base`)
+- **Bases de données** : MySQL, PostgreSQL, MongoDB, Redis
+- Paiements CinetPay / NotchPay
+- Domaines OpenProvider
+- Panel admin + terminal web
+
+## API Bases de données
+
+```
+GET    /api/v1/databases
+POST   /api/v1/databases          { "name": "mydb", "engine": "mysql" }
+GET    /api/v1/databases/:id
+DELETE /api/v1/databases/:id
+POST   /api/v1/databases/:id/export
+```
+
+## Documentation
+
+- `docs/DATABASE-SERVICE.md` — Service DB SQL/NoSQL
+- `docs/TESTING.md` — Stratégie de tests
+- `STARTUP.md` — Guide complet
+- `openspace-specs.md` — Spécifications produit
+
+## Tests
 
 ```bash
-cd frontend
-npm install
-npm run dev
+cd backend && go test ./...
+cd tests/e2e && npm install && npx playwright test
 ```
 
-Le frontend démarre sur `http://localhost:3000`
+## Plans (FCFA/mois)
 
-## 🎨 Design Frontend
-
-- **Couleurs**: Rouge (#E63946) + Blanc
-- **Framework**: React 18 + Vite
-- **Styles**: CSS vanillaavec variables CSS
-- **Responsive**: Mobile-first design
-
-## 📡 Communication
-
-Le frontend proxifie `/api/*` vers `http://localhost:8080` (voir `vite.config.js`)
-
-## 🔑 Endpoints API
-
-- **Auth**: `POST /api/v1/auth/register`, `POST /api/v1/auth/login`
-- **Payments**: `POST /api/v1/payments/initiate`, `GET /api/v1/payments/me`
-- **Subscriptions**: `GET /api/v1/subscriptions/me`, `POST /api/v1/subscriptions/cancel`
-- **Spaces**: `POST /api/v1/spaces/`, `GET /api/v1/spaces/me`, `DELETE /api/v1/spaces/me`
-- **Domains**: `POST /api/v1/domains/search`, `POST /api/v1/domains/purchase`, etc.
-
-## ⚙️ Construction
-
-### Backend
-
-```bash
-cd backend
-go build -o openspace cmd/main.go
-```
-
-### Frontend
-
-```bash
-cd frontend
-npm run build
-# Fichiers générés dans dist/
-```
-
-## 📝 Notes
-
-- **Backend vide**: À remplir avec les fichiers Go (cmd/, internal/, pkg/, migrations/, go.mod, etc.)
-- **Frontend prêt**: Complètement fonctionnel avec couleurs rouge/blanc et intégration API
-- **Variable env**: Configurer `.env` avec clés API (CinetPay, NotchPay, OpenProvider, etc.)
-
----
-
-**Créé le**: 2026-04-01  
-**Statut**: ✅ Structure prête, Backend à remplir
+| Plan | SQL | NoSQL | RAM |
+|------|-----|-------|-----|
+| Starter | 1 | 0 | 512 MB |
+| Dev | 2 | 1 | 512 MB |
+| Pro | 5 | 2 | 1 GB |
+| Business | 100 | 100 | 2 GB |
