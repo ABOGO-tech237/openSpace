@@ -112,7 +112,7 @@ func main() {
 	adminRepo := admin.NewRepository(db)
 
 	// Initialiser le client Docker
-	dockerClient, err := provisioning.NewDockerClient()
+	dockerClient, err := provisioning.NewDockerClientWithOptions(cfg.App.EnableResourceLimits)
 	if err != nil {
 		log.Fatalf("❌ Impossible de se connecter à Docker: %v", err)
 	}

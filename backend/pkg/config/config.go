@@ -19,8 +19,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port string
-	Env  string
+	Port                    string
+	Env                     string
+	EnableResourceLimits    bool
 }
 
 type DatabaseConfig struct {
@@ -72,11 +73,13 @@ func Load() *Config {
 	redisDB, _ := strconv.Atoi(getEnv("REDIS_DB", "0"))
 	accessExpiry, _ := strconv.Atoi(getEnv("JWT_ACCESS_EXPIRY", "15"))
 	refreshExpiry, _ := strconv.Atoi(getEnv("JWT_REFRESH_EXPIRY", "168"))
+	enableLimits, _ := strconv.ParseBool(getEnv("ENABLE_RESOURCE_LIMITS", "false"))
 
 	return &Config{
 		App: AppConfig{
-			Port: getEnv("APP_PORT", "8080"),
-			Env:  getEnv("APP_ENV", "development"),
+			Port:                 getEnv("APP_PORT", "8080"),
+			Env:                  getEnv("APP_ENV", "development"),
+			EnableResourceLimits: enableLimits,
 		},
 		Database: DatabaseConfig{
 			Host:     getEnv("DB_HOST", "localhost"),

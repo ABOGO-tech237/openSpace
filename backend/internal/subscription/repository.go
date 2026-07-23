@@ -71,16 +71,20 @@ func (r *Repository) FindActiveByUserID(ctx context.Context, userID string) (*Su
 	`
 
 	swc := &SubscriptionWithContainer{}
+	var paymentID *string
 	var containerID, hostname, containerStatus, internalIP *string
 
 	err := r.db.QueryRow(ctx, query, userID).Scan(
-		&swc.ID, &swc.UserID, &swc.PaymentID, &swc.Plan, &swc.Status,
+		&swc.ID, &swc.UserID, &paymentID, &swc.Plan, &swc.Status,
 		&swc.StartedAt, &swc.ExpiresAt, &swc.AutoRenew, &swc.CreatedAt, &swc.UpdatedAt,
 		&containerID, &hostname, &containerStatus, &internalIP,
 	)
 
 	if err != nil {
 		return nil, errors.New("aucun abonnement actif trouvé")
+	}
+	if paymentID != nil {
+		swc.PaymentID = *paymentID
 	}
 
 	// Si container existe, l'ajouter

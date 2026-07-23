@@ -5,10 +5,13 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log"
+	"os"
 	"strings"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/api/types/network"
 	"github.com/docker/docker/client"
@@ -48,6 +51,9 @@ func (d *DockerProvisioner) Create(ctx context.Context, p provisionParams) (dock
 
 	containerName := fmt.Sprintf("openspace_db_%s_%s", shortID(p.UserID), sanitizeName(p.Name))
 	volumePath := fmt.Sprintf("/var/openspace/databases/%s/%s", p.UserID, p.Name)
+	if err := os.MkdirAll(volumePath, 0755); err != nil {
+		return "", "", 0, fmt.Errorf("impossible de créer le volume DB: %w", err)
+	}
 
 	env := buildEnv(p)
 	config := &container.Config{
@@ -64,6 +70,11 @@ func (d *DockerProvisioner) Create(ctx context.Context, p provisionParams) (dock
 		config.Cmd = []string{"redis-server", "--requirepass", p.Password}
 	}
 
+	if pullReader, pullErr := d.cli.ImagePull(ctx, cfg.Image, image.PullOptions{}); pullErr == nil {
+		_, _ = io.Copy(io.Discard, pullReader)
+		pullReader.Close()
+	}
+
 	hostConfig := &container.HostConfig{
 		Mounts: []mount.Mount{
 			{
@@ -74,10 +85,6 @@ func (d *DockerProvisioner) Create(ctx context.Context, p provisionParams) (dock
 		},
 		RestartPolicy: container.RestartPolicy{Name: "unless-stopped"},
 		NetworkMode:   networkName,
-		Resources: container.Resources{
-			Memory:   256 * 1024 * 1024,
-			NanoCPUs: int64(0.5 * 1e9),
-		},
 	}
 
 	resp, err := d.cli.ContainerCreate(ctx, config, hostConfig, &network.NetworkingConfig{}, nil, containerName)
@@ -150,7 +157,7 @@ func generatePassword() string {
 }
 
 func generateUsername(name string) string {
-	return "os_" + sanitizeName(name)
+	return "os_" + strings.ReplaceAll(sanitizeName(name), "-", "")
 }
 
 func shortID(id string) string {

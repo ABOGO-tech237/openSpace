@@ -213,11 +213,15 @@ func (r *Repository) CreateBackup(ctx context.Context, instanceID, backupType st
 		RETURNING id, instance_id, size_bytes, storage_path, type, status, created_at
 	`
 	b := &Backup{}
+	var storagePath *string
 	err := r.db.QueryRow(ctx, query, instanceID, backupType).Scan(
-		&b.ID, &b.InstanceID, &b.SizeBytes, &b.StoragePath, &b.Type, &b.Status, &b.CreatedAt,
+		&b.ID, &b.InstanceID, &b.SizeBytes, &storagePath, &b.Type, &b.Status, &b.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
+	}
+	if storagePath != nil {
+		b.StoragePath = *storagePath
 	}
 	return b, nil
 }
